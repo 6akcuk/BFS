@@ -94,6 +94,7 @@ function syncBfs<R>(from: GraphNode, to: GraphNode, strategy: Strategy<R>) {
 
     if (!node) continue;
     if (visited.has(node)) continue;
+    visited.add(node);
 
     const childs = getGraph(node);
 
@@ -122,6 +123,7 @@ async function asyncBfs<R>(
 
     if (!node) continue;
     if (visited.has(node)) continue;
+    visited.add(node);
 
     const childs = await getAsyncGraph(node);
 
@@ -139,12 +141,12 @@ async function asyncBfs<R>(
 
 function promisedBfs<R>(from: GraphNode, to: GraphNode, strategy: Strategy<R>) {
   return new Promise((resolve, reject) => {
-    let queuedPromises = 1;
+    let queuedPromises = 0;
     const queue = [from];
     const visited = new Set<GraphNode>();
 
     const run = () => {
-      if (queuedPromises === 0) {
+      if (queue.length === 0 && queuedPromises === 0) {
         resolve(false);
         return;
       }
@@ -153,7 +155,15 @@ function promisedBfs<R>(from: GraphNode, to: GraphNode, strategy: Strategy<R>) {
         const node = queue.shift();
 
         if (!node) continue;
-        if (visited.has(node)) continue;
+
+        if (visited.has(node)) {
+          run();
+          continue;
+        }
+
+        visited.add(node);
+
+        queuedPromises += 1;
 
         getAsyncGraph(node).then(childs => {
           queuedPromises -= 1;
@@ -167,7 +177,6 @@ function promisedBfs<R>(from: GraphNode, to: GraphNode, strategy: Strategy<R>) {
             }
 
             queue.push(childNode);
-            queuedPromises += 1;
           }
 
           run();
